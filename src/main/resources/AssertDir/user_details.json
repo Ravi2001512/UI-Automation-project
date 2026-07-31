@@ -1,0 +1,15 @@
+[
+  {
+    "tc_id": "TC-001",
+    "data": [
+      {
+        "name": "sanath",
+        "address": "Colombo"
+      },
+      {
+        "name": "Nipuni",
+        "address": "Moratuwa"
+      }
+    ]
+  }
+]
