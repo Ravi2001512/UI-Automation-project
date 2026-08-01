@@ -6,6 +6,7 @@ import com.ucsc.tutionplatform.models.TestData;
 import com.ucsc.tutionplatform.utils.JsonHandler;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
@@ -35,8 +36,24 @@ public class BaseTest {
 
     @BeforeClass(alwaysRun = true)
     public void openBrowser() {
-        DriverManager.setDriver(new ChromeDriver());
-        driver().manage().window().maximize();
+
+        boolean headless = Boolean.parseBoolean(
+                System.getProperty("headless", "false"));
+
+        ChromeOptions options = new ChromeOptions();
+
+        if (headless) {
+            options.addArguments("--headless=new");
+            options.addArguments("--no-sandbox");
+            options.addArguments("--disable-dev-shm-usage");
+            options.addArguments("--window-size=1920,1080");
+        }
+
+        DriverManager.setDriver(new ChromeDriver(options));
+
+        if (!headless) {
+            driver().manage().window().maximize();
+        }
     }
 
     @AfterClass(alwaysRun = true)

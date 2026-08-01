@@ -12,7 +12,7 @@ pipeline {
     stages {
         stage('Run UI Tests') {
             steps {
-                sh "mvn clean test -Dsurefire.suiteXmlFiles=${params.TEST_SUITE}"
+                sh "mvn clean test -Dheadless=true -Dsurefire.suiteXmlFiles=${params.TEST_SUITE}"
             }
         }
     }
