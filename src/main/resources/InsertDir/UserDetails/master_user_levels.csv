@@ -1,0 +1,5 @@
+"level_code","level_name","sort_order","is_portal_login","created_at"
+super_user,Super User,1,true,2026-06-18 18:35:52.534
+admin_user,Admin User,2,true,2026-06-18 18:35:52.534
+moderate_user,Moderate User,3,true,2026-06-18 18:35:52.534
+student_user,Student User,4,true,2026-06-18 18:35:52.534

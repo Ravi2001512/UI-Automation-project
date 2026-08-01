@@ -22,6 +22,34 @@ public final class ConfigReader {
         return value;
     }
 
+    public static String getProperty(String key, String defaultValue) {
+        return PROPERTIES.getProperty(key, defaultValue);
+    }
+
+    public static int getIntProperty(String key, int defaultValue) {
+        String value = PROPERTIES.getProperty(key);
+
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Config property must be an integer: " + key, exception);
+        }
+    }
+
+    public static boolean getBooleanProperty(String key, boolean defaultValue) {
+        String value = PROPERTIES.getProperty(key);
+
+        if (value == null || value.isBlank()) {
+            return defaultValue;
+        }
+
+        return Boolean.parseBoolean(value.trim());
+    }
+
     private static Properties loadProperties() {
         Properties properties = new Properties();
         ClassLoader classLoader = ConfigReader.class.getClassLoader();
