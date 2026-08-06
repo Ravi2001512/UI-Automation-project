@@ -1,0 +1,28 @@
+[
+  {
+    "tc_id": "TC-001",
+    "data": [
+      {
+        "name": "TC-001",
+        "data": {
+          "username": "groupa",
+          "password": "123456"
+        }
+      }
+    ]
+  },
+  {
+    "tc_id": "TC-002",
+    "data": [
+      {
+        "name": "TC-002",
+        "data": {
+          "userId": "test-user-groupa-id-001",
+          "displayName": "test-user-groupa-displayname-001",
+          "username": "test-user-groupa-username-001",
+          "email": "test-user-groupa-001@gmail.com"
+        }
+      }
+    ]
+  }
+]

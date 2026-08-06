@@ -1,0 +1,33 @@
+[
+  {
+    "name": "TC-095",
+    "data": [
+      {
+        "examValue": "PCE|||2027|||1|||Dekma-Matara",
+        "studentId": "STU-KNS",
+        "mark": "88.5"
+      }
+    ]
+  },
+  {
+    "name": "TC-096",
+    "data": [
+      {
+        "examValue": "PCE|||2026|||14|||Dekma-Matara",
+        "studentId": "STU-KNS",
+        "mark": "101"
+      }
+    ]
+  },
+  {
+    "name": "TC-097",
+    "data": [
+      {
+        "examValue": "PCE|||2026|||14|||Dekma-Matara",
+        "studentId": "STU-KNS",
+        "mark": "-8"
+      }
+    ]
+  }
+
+]

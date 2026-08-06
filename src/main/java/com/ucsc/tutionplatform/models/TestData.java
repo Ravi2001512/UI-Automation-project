@@ -3,27 +3,20 @@ package com.ucsc.tutionplatform.models;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class TestData {
-
-    private String testCaseId;
+public class TestData<T> {
     private String name;
-    private String address;
+    private T data;
 
-    public TestData() {
+    // Default Constructor
+    public TestData() {}
+
+    // Parameterized Constructor
+    public TestData(String name, T data) {
+        this.name = name;
+        this.data = data;
     }
 
-    public TestData(String testCaseId) {
-        this.testCaseId = testCaseId;
-    }
-
-    public String getTestCaseId() {
-        return testCaseId;
-    }
-
-    public void setTestCaseId(String testCaseId) {
-        this.testCaseId = testCaseId;
-    }
-
+    // Getters and Setters
     public String getName() {
         return name;
     }
@@ -32,11 +25,11 @@ public class TestData {
         this.name = name;
     }
 
-    public String getAddress() {
-        return address;
+    public T getData() {
+        return data;
     }
 
-    public void setAddress(String address) {
-        this.address = address;
+    public void setData(T data) {
+        this.data = data;
     }
 }
