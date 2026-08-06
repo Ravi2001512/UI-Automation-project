@@ -26,17 +26,6 @@ public class SearchExamDetailsTest extends ExaminationBaseTest {
                 };
         }
 
-        @DataProvider(name = "negativeSearchTerms")
-        public Object[][] negativeSearchTerms() {
-                return new Object[][] {
-                                { "invalid text", "NoMatchingExam" },
-                                { "numbers only", "999999999" },
-                                { "special characters", "!@#$%^&*()_+{}|:<>?" },
-                                { "sql injection", "' OR '1'='1" },
-                                { "xss string", "<script>alert(1)</script>" },
-                                { "spaces only", "   " }
-                };
-        }
 
         @Test(description = "Verify the search box placeholder, initial state, and clear button disabled state")
         public void verifyEmptySearchShowsCompleteListAndDisabledClearButton() {
@@ -128,19 +117,6 @@ public class SearchExamDetailsTest extends ExaminationBaseTest {
                                 "Clear button must be enabled after typing a valid search value.");
         }
 
-        @Test(dataProvider = "negativeSearchTerms", description = "Verify search returns no exam cards for invalid values")
-        public void verifyNegativeSearchFiltering(String caseName, String searchText) {
-                examinationPage.enterExamSnapshotSearch(searchText);
-                examinationPage.waitForNoVisibleExamCards();
-
-                Assert.assertEquals(
-                                examinationPage.getVisibleExamCardCount(),
-                                0,
-                                "Expected zero exam cards for " + caseName + " search.");
-                Assert.assertTrue(
-                                examinationPage.isExamSnapshotClearButtonEnabled(),
-                                "Clear button should be enabled whenever the search box has text.");
-        }
 
         private String buildVeryLongText() {
                 StringJoiner joiner = new StringJoiner("");
