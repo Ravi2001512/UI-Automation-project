@@ -6,8 +6,6 @@ import com.ucsc.tutionplatform.database.DatabaseHandler;
 import com.ucsc.tutionplatform.models.TestData;
 import com.ucsc.tutionplatform.utils.JsonHandler;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
@@ -23,9 +21,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
 /**
@@ -33,7 +29,8 @@ import java.util.stream.Stream;
  *
  * <p>Lifecycle:
  * <ul>
- *   <li>{@link #openBrowser()} – {@code @BeforeClass}: starts Chrome and navigates to the app;
+ *   <li>{@link #openBrowser()} – {@code @BeforeClass}: starts the browser via
+ *       {@link DriverManager#openBrowser()} and navigates to the app;
  *       also performs the initial admin login so concrete tests start from an authenticated state.</li>
  *   <li>{@link #initSoftAssert()} – {@code @BeforeMethod}: gives each test method its own
  *       {@link SoftAssert} instance (thread-safe via {@link ThreadLocal}).</li>
@@ -62,21 +59,12 @@ public abstract class BaseTest {
     // =========================================================================
 
     /**
-     * Opens Chrome (headless when {@code -Dheadless=true} is passed to Maven),
+     * Opens the configured browser (see {@link DriverManager#openBrowser()}),
      * navigates to {@code app.url}, and logs in as the configured admin user.
      */
     @BeforeClass(alwaysRun = true)
     public void openBrowser() {
-        boolean headless = Boolean.parseBoolean(
-                System.getProperty("headless", "false"));
-
-        ChromeOptions options = buildChromeOptions(headless);
-        DriverManager.setDriver(new ChromeDriver(options));
-
-        if (!headless) {
-            driver().manage().window().maximize();
-        }
-
+        DriverManager.openBrowser();
         navigateAndLogin();
     }
 
@@ -208,30 +196,7 @@ public abstract class BaseTest {
     // Private helpers
     // =========================================================================
 
-    private static ChromeOptions buildChromeOptions(boolean headless) {
-        ChromeOptions options = new ChromeOptions();
 
-        // Suppress Chrome's password-manager prompts
-        Map<String, Object> prefs = new HashMap<>();
-        prefs.put("credentials_enable_service", false);
-        prefs.put("profile.password_manager_enabled", false);
-        prefs.put("profile.password_manager_leak_detection", false);
-        options.setExperimentalOption("prefs", prefs);
-
-        options.addArguments("--disable-save-password-bubble");
-        options.addArguments("--disable-infobars");
-        options.addArguments("--disable-notifications");
-        options.addArguments("--disable-popup-blocking");
-
-        if (headless) {
-            options.addArguments("--headless=new");
-            options.addArguments("--no-sandbox");
-            options.addArguments("--disable-dev-shm-usage");
-            options.addArguments("--window-size=1920,1080");
-        }
-
-        return options;
-    }
 
     private void navigateAndLogin() {
         driver().get(ConfigReader.getProperty("app.url"));
