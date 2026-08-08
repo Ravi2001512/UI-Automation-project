@@ -17,7 +17,7 @@
 
             <class name="com.ucsc.tutionplatform.tests.userdetails.EditUserTest">
                 <methods>
-                    <include name="verifyUserLevelCanBeChangedBetweenAdminAndModerate"/>
+                    <include name="verifyUserDisplayNameCanBeUpdated"/>
                 </methods>
             </class>
 
