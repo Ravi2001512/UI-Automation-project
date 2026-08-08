@@ -2,6 +2,7 @@ package com.ucsc.tutionplatform.pages;
 
 import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
@@ -116,7 +117,7 @@ public class ClassExaminationPage extends BasePage {
     // Exam Marks — bulk upload
     private By bulkUploadExamSelect = By.xpath(labeledSelect(BULK_BLOCK, "Select Exam for Bulk Upload"));
     private By downloadTemplateBtn = By.xpath(buttonWithText(BULK_BLOCK, "Download Template"));
-    private By studentIdCriteriaInput = By.xpath(labeledInput(BULK_BLOCK, "Student ID criteria"));
+    private By studentIdCriteriaInput = By.xpath(BULK_BLOCK + "//input[@placeholder='T2830 T2820']");
     private By xlsxFileInput = By.xpath(BULK_BLOCK + "//input[@type='file']");
     private By uploadXlsxBtn = By.xpath(buttonWithText(BULK_BLOCK, "Upload XLSX"));
 
@@ -408,4 +409,39 @@ public class ClassExaminationPage extends BasePage {
     public String getCalculateAveragesBtnText() {
         return driver.findElement(calculateAveragesBtn).getText();
     }
+    public void selectExamForBulkUpload(String examValue) {
+
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+        // Wait until exam dropdown is available
+        WebElement examDropdown = wait.until(
+                driver -> driver.findElement(bulkUploadExamSelect)
+        );
+
+        Select select = new Select(examDropdown);
+
+        // Wait until exam options are loaded
+        wait.until(driver -> {
+            Select s = new Select(driver.findElement(bulkUploadExamSelect));
+            return s.getOptions().size() > 1;
+        });
+
+        // Select using the option VALUE
+        select = new Select(driver.findElement(bulkUploadExamSelect));
+        select.selectByValue(examValue);
+    }
+
+    public void enterStudentIdCriteria(String studentIds) {
+        driver.findElement(studentIdCriteriaInput).clear();
+        driver.findElement(studentIdCriteriaInput).sendKeys(studentIds);
+    }
+
+    public void uploadExcelFile(String filePath) {
+        driver.findElement(xlsxFileInput).sendKeys(filePath);
+    }
+
+    public void clickUploadXlsx() {
+        driver.findElement(uploadXlsxBtn).click();
+    }
+
 }

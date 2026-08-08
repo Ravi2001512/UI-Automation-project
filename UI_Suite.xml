@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
 
-<suite name="UI Automation Regression Suite"
+<suite name="UI Automation Suite"
        verbose="2"
        preserve-order="true">
 
-    <test name="User Details Module">
+    <test name="User Details Tests">
         <packages>
             <package name="com.ucsc.tutionplatform.tests.userdetails"/>
         </packages>
     </test>
 
-    <test name="Class Examination Module">
+    <test name="Class Examination Tests">
         <packages>
             <package name="com.ucsc.tutionplatform.tests.classexaminations"/>
         </packages>
