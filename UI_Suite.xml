@@ -1,26 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
-
-<suite name="UI Automation Regression Suite"
-       verbose="2"
-       preserve-order="true">
-
-    <test name="User Details Module">
-        <packages>
-            <package name="com.ucsc.tutionplatform.tests.userdetails"/>
-        </packages>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="All Test Suite">
+    <test verbose="2" preserve-order="true" name="C:/UCSC/2026B2/UCSC2026B2UI">
+        <classes>
+            <class name="com.ucsc.tutionplatform.tests.userdetails.CreateUserTest">
+                <methods>
+                    <include name="verifyThatUserCanBeCreatedByProvidingMandatoryFieldsOnly"/>
+                </methods>
+            </class>
+        </classes>
     </test>
-
-    <test name="Class Examination Module">
-        <packages>
-            <package name="com.ucsc.tutionplatform.tests.classexaminations"/>
-        </packages>
-    </test>
-
-    <test name="Login Module">
-        <packages>
-            <package name="com.ucsc.tutionplatform.tests.login"/>
-        </packages>
-    </test>
-
 </suite>
