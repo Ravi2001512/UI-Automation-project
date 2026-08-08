@@ -1,5 +1,6 @@
 package com.ucsc.tutionplatform.core;
 
+import com.ucsc.tutionplatform.config.ConfigReader;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -8,16 +9,20 @@ import org.openqa.selenium.edge.EdgeOptions;
 import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.firefox.FirefoxOptions;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
  * Centralised WebDriver lifecycle manager.
  *
- * <p>Supports <b>Chrome</b>, <b>Firefox</b>, and <b>Edge</b>.
- * The browser is selected via the {@code -Dbrowser} system property
- * (defaults to {@code "chrome"}).  Headless mode is controlled by
- * {@code -Dheadless=true}.
+ * <p>All browser configuration (browser name, headless mode, arguments,
+ * and preferences) is read from {@code config.properties} via
+ * {@link ConfigReader}.  System properties ({@code -Dbrowser},
+ * {@code -Dheadless}) take priority when supplied on the command line.
+ *
+ * <p>Supported browsers: <b>Chrome</b>, <b>Firefox</b>, <b>Edge</b>.
  */
 public final class DriverManager {
 
@@ -31,15 +36,22 @@ public final class DriverManager {
     // =========================================================================
 
     /**
-     * Creates a new {@link WebDriver} for the requested browser, stores it in a
-     * {@link ThreadLocal}, and – when not running headless – maximises the window.
+     * Creates a new {@link WebDriver} for the configured browser, stores it in
+     * a {@link ThreadLocal}, and – when not running headless – maximises the
+     * window.
      *
-     * <p>Supported browser values (case-insensitive): {@code chrome},
-     * {@code firefox}, {@code edge}.
+     * <p>Configuration is read from {@code config.properties}:
+     * <ul>
+     *   <li>{@code browser} – chrome | firefox | edge</li>
+     *   <li>{@code headless} – true | false</li>
+     *   <li>{@code <browser>.arguments} – comma-separated CLI arguments</li>
+     *   <li>{@code <browser>.headless.arguments} – extra args when headless</li>
+     *   <li>{@code <browser>.prefs} – comma-separated key=value preferences</li>
+     * </ul>
      */
     public static void openBrowser() {
-        String browserName = System.getProperty("browser", "chrome").toLowerCase().trim();
-        boolean headless   = Boolean.parseBoolean(System.getProperty("headless", "false"));
+        String browserName = resolveProperty("browser", "chrome").toLowerCase().trim();
+        boolean headless   = Boolean.parseBoolean(resolveProperty("headless", "false"));
 
         WebDriver driver = createDriver(browserName, headless);
         setDriver(driver);
@@ -81,9 +93,9 @@ public final class DriverManager {
 
     private static WebDriver createDriver(String browserName, boolean headless) {
         return switch (browserName) {
-            case "chrome"  -> new ChromeDriver(buildChromeOptions(headless));
-            case "firefox" -> new FirefoxDriver(buildFirefoxOptions(headless));
-            case "edge"    -> new EdgeDriver(buildEdgeOptions(headless));
+            case "chrome"  -> createChromeDriver(headless);
+            case "firefox" -> createFirefoxDriver(headless);
+            case "edge"    -> createEdgeDriver(headless);
             default -> throw new IllegalArgumentException(
                     "Unsupported browser: " + browserName
                             + ". Supported values: chrome, firefox, edge");
@@ -91,72 +103,145 @@ public final class DriverManager {
     }
 
     // =========================================================================
-    // Private – browser-specific options
+    // Private – browser-specific driver creation
     // =========================================================================
 
-    private static ChromeOptions buildChromeOptions(boolean headless) {
+    private static WebDriver createChromeDriver(boolean headless) {
         ChromeOptions options = new ChromeOptions();
 
-        // Suppress Chrome's password-manager prompts
-        Map<String, Object> prefs = new HashMap<>();
-        prefs.put("credentials_enable_service", false);
-        prefs.put("profile.password_manager_enabled", false);
-        prefs.put("profile.password_manager_leak_detection", false);
-        options.setExperimentalOption("prefs", prefs);
-
-        options.addArguments("--disable-save-password-bubble");
-        options.addArguments("--disable-infobars");
-        options.addArguments("--disable-notifications");
-        options.addArguments("--disable-popup-blocking");
-
-        if (headless) {
-            options.addArguments("--headless=new");
-            options.addArguments("--no-sandbox");
-            options.addArguments("--disable-dev-shm-usage");
-            options.addArguments("--window-size=1920,1080");
+        Map<String, Object> prefs = parsePrefsAsObjects("chrome.prefs");
+        if (!prefs.isEmpty()) {
+            options.setExperimentalOption("prefs", prefs);
         }
 
-        return options;
+        addArguments(options, "chrome.arguments");
+        if (headless) {
+            addArguments(options, "chrome.headless.arguments");
+        }
+
+        return new ChromeDriver(options);
     }
 
-    private static FirefoxOptions buildFirefoxOptions(boolean headless) {
+    private static WebDriver createFirefoxDriver(boolean headless) {
         FirefoxOptions options = new FirefoxOptions();
 
-        options.addPreference("dom.webnotifications.enabled", false);
-        options.addPreference("dom.push.enabled", false);
-        options.addPreference("signon.rememberSignons", false);
-
-        if (headless) {
-            options.addArguments("--headless");
-            options.addArguments("--width=1920");
-            options.addArguments("--height=1080");
+        for (Map.Entry<String, String> entry : parsePrefs("firefox.prefs").entrySet()) {
+            String value = entry.getValue();
+            if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
+                options.addPreference(entry.getKey(), Boolean.parseBoolean(value));
+            } else {
+                options.addPreference(entry.getKey(), value);
+            }
         }
 
-        return options;
+        addArguments(options, "firefox.arguments");
+        if (headless) {
+            addArguments(options, "firefox.headless.arguments");
+        }
+
+        return new FirefoxDriver(options);
     }
 
-    private static EdgeOptions buildEdgeOptions(boolean headless) {
+    private static WebDriver createEdgeDriver(boolean headless) {
         EdgeOptions options = new EdgeOptions();
 
-        // Suppress Edge's password-manager prompts (Chromium-based, same prefs)
-        Map<String, Object> prefs = new HashMap<>();
-        prefs.put("credentials_enable_service", false);
-        prefs.put("profile.password_manager_enabled", false);
-        prefs.put("profile.password_manager_leak_detection", false);
-        options.setExperimentalOption("prefs", prefs);
-
-        options.addArguments("--disable-save-password-bubble");
-        options.addArguments("--disable-infobars");
-        options.addArguments("--disable-notifications");
-        options.addArguments("--disable-popup-blocking");
-
-        if (headless) {
-            options.addArguments("--headless=new");
-            options.addArguments("--no-sandbox");
-            options.addArguments("--disable-dev-shm-usage");
-            options.addArguments("--window-size=1920,1080");
+        Map<String, Object> prefs = parsePrefsAsObjects("edge.prefs");
+        if (!prefs.isEmpty()) {
+            options.setExperimentalOption("prefs", prefs);
         }
 
-        return options;
+        addArguments(options, "edge.arguments");
+        if (headless) {
+            addArguments(options, "edge.headless.arguments");
+        }
+
+        return new EdgeDriver(options);
+    }
+
+    // =========================================================================
+    // Private – config helpers
+    // =========================================================================
+
+    /**
+     * Returns the system property if set, otherwise falls back to
+     * {@link ConfigReader}.
+     */
+    private static String resolveProperty(String key, String defaultValue) {
+        String systemValue = System.getProperty(key);
+        return (systemValue != null) ? systemValue
+                                     : ConfigReader.getProperty(key, defaultValue);
+    }
+
+    /**
+     * Reads a comma-separated list of arguments from config and adds them
+     * to the given browser options.
+     */
+    private static void addArguments(ChromeOptions options, String configKey) {
+        for (String arg : splitCsv(configKey)) {
+            options.addArguments(arg);
+        }
+    }
+
+    private static void addArguments(FirefoxOptions options, String configKey) {
+        for (String arg : splitCsv(configKey)) {
+            options.addArguments(arg);
+        }
+    }
+
+    private static void addArguments(EdgeOptions options, String configKey) {
+        for (String arg : splitCsv(configKey)) {
+            options.addArguments(arg);
+        }
+    }
+
+    /**
+     * Parses a comma-separated list of {@code key=value} pairs from the given
+     * config key.  Boolean-looking values are stored as {@link Boolean}.
+     */
+    private static Map<String, Object> parsePrefsAsObjects(String configKey) {
+        Map<String, Object> result = new HashMap<>();
+
+        for (Map.Entry<String, String> entry : parsePrefs(configKey).entrySet()) {
+            String value = entry.getValue();
+            if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
+                result.put(entry.getKey(), Boolean.parseBoolean(value));
+            } else {
+                result.put(entry.getKey(), value);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Parses a comma-separated list of {@code key=value} pairs into a map.
+     */
+    private static Map<String, String> parsePrefs(String configKey) {
+        Map<String, String> prefs = new HashMap<>();
+
+        for (String token : splitCsv(configKey)) {
+            int eq = token.indexOf('=');
+            if (eq > 0) {
+                prefs.put(token.substring(0, eq).trim(), token.substring(eq + 1).trim());
+            }
+        }
+
+        return prefs;
+    }
+
+    /**
+     * Splits a comma-separated config value into a trimmed list,
+     * filtering out blanks.
+     */
+    private static List<String> splitCsv(String configKey) {
+        String raw = ConfigReader.getProperty(configKey, "");
+        if (raw.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
     }
 }
+
