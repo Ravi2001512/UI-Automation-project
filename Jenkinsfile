@@ -26,7 +26,13 @@ pipeline {
 
     post {
         always {
+            // Keep existing JUnit test results
             junit 'target/surefire-reports/*.xml'
+
+            // Add Allure Report generation
+            allure includeProperties: false,
+                   jdk: '',
+                   results: [[path: 'target/allure-results']]
         }
     }
 }
