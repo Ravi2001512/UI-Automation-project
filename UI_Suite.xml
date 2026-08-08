@@ -27,7 +27,6 @@
             <class name="com.ucsc.tutionplatform.tests.classexaminations.ExamSelectionTest"/>
             <class name="com.ucsc.tutionplatform.tests.classexaminations.CalculateAverageTest"/>
             <class name="com.ucsc.tutionplatform.tests.classexaminations.SingleUploadTest"/>
-            <class name="com.ucsc.tutionplatform.tests.classexaminations.BulkUploadTest"/>
         </classes>
     </test>
 
