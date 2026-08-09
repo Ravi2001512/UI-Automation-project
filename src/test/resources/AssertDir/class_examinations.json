@@ -1,1 +1,46 @@
-[]
+{
+  "testCases": {
+    "TC-EXAM-SEARCH-001": [
+      {
+        "caseName": "complete exam title",
+        "searchText": "First Term Trial"
+      },
+      {
+        "caseName": "partial exam title",
+        "searchText": "Trial"
+      },
+      {
+        "caseName": "exam type",
+        "searchText": "PCE"
+      },
+      {
+        "caseName": "al year",
+        "searchText": "2026"
+      },
+      {
+        "caseName": "exam number",
+        "searchText": "1"
+      },
+      {
+        "caseName": "location",
+        "searchText": "Sipta-Tangalle"
+      },
+      {
+        "caseName": "grade marks",
+        "searchText": "75"
+      },
+      {
+        "caseName": "lowercase",
+        "searchText": "pce"
+      },
+      {
+        "caseName": "uppercase",
+        "searchText": "PCE"
+      },
+      {
+        "caseName": "mixed case",
+        "searchText": "pCe"
+      }
+    ]
+  }
+}

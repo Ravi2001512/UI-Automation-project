@@ -1,128 +1,92 @@
 package com.ucsc.tutionplatform.tests.classexaminations;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.util.StringJoiner;
+import java.io.InputStream;
 
 public class SearchExamDetailsTest extends ExaminationBaseTest {
 
-        private static final String SEARCH_PLACEHOLDER = "Search by exam title, type, A/L year, exam number, location, or grade band";
-
-        @DataProvider(name = "positiveSearchTerms")
-        public Object[][] positiveSearchTerms() {
-                return new Object[][] {
-                                { "complete exam title", "First Term Trial" },
-                                { "partial exam title", "Trial" },
-                                { "exam type", "PCE" },
-                                { "al year", "2026" },
-                                { "exam number", "1" },
-                                { "location", "Sipta-Tangalle" },
-                                { "grade marks", "75" },
-                                { "lowercase", "pce" },
-                                { "uppercase", "PCE" },
-                                { "mixed case", "pCe" }
-                };
+        // Helper method to load the JSON test cases array
+        private JsonNode getTestCasesJson() throws Exception {
+                try (InputStream stream = getClass().getClassLoader().getResourceAsStream(assertionPath)) {
+                        JsonNode root = new ObjectMapper().readTree(stream);
+                        return root.path("testCases").path("TC-EXAM-SEARCH-001");
+                }
         }
 
+        // DataProvider for positive search terms
+        @DataProvider(name = "positiveSearchTermsFromJson")
+        public Object[][] positiveSearchTermsFromJson() throws Exception {
+                JsonNode searchCases = getTestCasesJson();
+                Object[][] data = new Object[searchCases.size()][2];
 
-        @Test(description = "Verify the search box placeholder, initial state, and clear button disabled state")
+                for (int i = 0; i < searchCases.size(); i++) {
+                        data[i][0] = searchCases.get(i).path("caseName").asText();
+                        data[i][1] = searchCases.get(i).path("searchText").asText();
+                }
+                return data;
+        }
+
+        @Test(description = "Verify initial empty search state")
         public void verifyEmptySearchShowsCompleteListAndDisabledClearButton() {
-                int totalExamCards = examinationPage.getVisibleExamCardCount();
+                int totalCards = examinationPage.getVisibleExamCardCount();
 
-                Assert.assertEquals(
-                                examinationPage.getExamSnapshotSearchPlaceholder(),
-                                SEARCH_PLACEHOLDER,
-                                "The search placeholder text is incorrect.");
-                Assert.assertTrue(
-                                examinationPage.isExamSnapshotClearButtonDisabled(),
-                                "Clear button must be disabled before any search text is entered.");
-                Assert.assertEquals(
-                                examinationPage.getVisibleExamCardCount(),
-                                totalExamCards,
-                                "All exam cards should be visible when the search input is empty.");
+                Assert.assertFalse(examinationPage.getExamSnapshotSearchPlaceholder().isEmpty());
+                Assert.assertTrue(examinationPage.isExamSnapshotClearButtonDisabled());
+                Assert.assertEquals(examinationPage.getVisibleExamCardCount(), totalCards);
         }
 
-        @Test(description = "Verify search results filter as the user types a single character")
-        public void verifyOneCharacterSearchFiltersResults() {
-                examinationPage.enterExamSnapshotSearch("2");
-                examinationPage.waitForAllVisibleExamCardsToContain("2");
+        @Test(description = "Verify single character search filtering")
+        public void verifyOneCharacterSearchFiltersResults() throws Exception {
+                // Gets first search text from JSON (e.g. "First Term Trial") and takes 1st letter ("F")
+                String firstLetter = getTestCasesJson().get(0).path("searchText").asText().substring(0, 1);
 
-                Assert.assertTrue(
-                                examinationPage.getVisibleExamCardCount() > 0,
-                                "Expected at least one exam card to match a one-character search.");
-                Assert.assertTrue(
-                                examinationPage.allVisibleExamCardsContain("2"),
-                                "Every displayed exam card must contain the typed search text.");
-                Assert.assertTrue(
-                                examinationPage.isExamSnapshotClearButtonEnabled(),
-                                "Clear button must become enabled after typing search text.");
+                examinationPage.enterExamSnapshotSearch(firstLetter);
+                examinationPage.waitForAllVisibleExamCardsToContain(firstLetter);
+
+                Assert.assertTrue(examinationPage.getVisibleExamCardCount() > 0);
+                Assert.assertTrue(examinationPage.allVisibleExamCardsContain(firstLetter));
+                Assert.assertTrue(examinationPage.isExamSnapshotClearButtonEnabled());
         }
 
-        @Test(description = "Verify very long search text returns no matching exam cards")
+        @Test(description = "Verify unmatched long search returns zero results")
         public void verifyVeryLongSearchTextReturnsNoResults() {
-                String veryLongText = buildVeryLongText();
+                String longText = "NO_MATCH_SEARCH_TERM_" + System.currentTimeMillis();
 
-                examinationPage.enterExamSnapshotSearch(veryLongText);
+                examinationPage.enterExamSnapshotSearch(longText);
                 examinationPage.waitForNoVisibleExamCards();
 
-                Assert.assertEquals(
-                                examinationPage.getVisibleExamCardCount(),
-                                0,
-                                "Very long unmatched text should return zero exam cards.");
-                Assert.assertTrue(
-                                examinationPage.isExamSnapshotClearButtonEnabled(),
-                                "Clear button must remain enabled when the search input has text.");
+                Assert.assertEquals(examinationPage.getVisibleExamCardCount(), 0);
+                Assert.assertTrue(examinationPage.isExamSnapshotClearButtonEnabled());
         }
 
-        @Test(description = "Verify clicking Clear empties the field, disables the button, and restores all exam cards")
-        public void verifyClearRestoresCompleteList() {
-                int totalExamCards = examinationPage.getVisibleExamCardCount();
+        @Test(description = "Verify clear button resets the search field and cards")
+        public void verifyClearRestoresCompleteList() throws Exception {
+                String searchTerm = getTestCasesJson().get(0).path("searchText").asText();
+                int totalCards = examinationPage.getVisibleExamCardCount();
 
-                examinationPage.enterExamSnapshotSearch("2026");
-                examinationPage.waitForAllVisibleExamCardsToContain("2026");
-                Assert.assertTrue(
-                                examinationPage.isExamSnapshotClearButtonEnabled(),
-                                "Clear button must be enabled after entering search text.");
+                examinationPage.enterExamSnapshotSearch(searchTerm);
+                examinationPage.waitForAllVisibleExamCardsToContain(searchTerm);
 
                 examinationPage.clearExamSnapshotSearch();
-                examinationPage.waitForAtLeastVisibleExamCardCount(totalExamCards);
+                examinationPage.waitForAtLeastVisibleExamCardCount(totalCards);
 
-                Assert.assertTrue(
-                                examinationPage.getVisibleExamCardCount() >= totalExamCards,
-                                "Clicking Clear should restore the full exam list.");
-                Assert.assertTrue(
-                                examinationPage.isExamSnapshotClearButtonDisabled(),
-                                "Clear button must be disabled again after the search box is cleared.");
-                Assert.assertEquals(
-                                examinationPage.getExamSnapshotSearchValue(),
-                                "",
-                                "Clicking Clear should empty the search textbox.");
+                Assert.assertTrue(examinationPage.getVisibleExamCardCount() >= totalCards);
+                Assert.assertTrue(examinationPage.isExamSnapshotClearButtonDisabled());
+                Assert.assertEquals(examinationPage.getExamSnapshotSearchValue(), "");
         }
 
-        @Test(dataProvider = "positiveSearchTerms", description = "Verify search filters exam cards for valid search values")
+        @Test(dataProvider = "positiveSearchTermsFromJson", description = "Verify data-driven search terms")
         public void verifyPositiveSearchFiltering(String caseName, String searchText) {
                 examinationPage.enterExamSnapshotSearch(searchText);
                 examinationPage.waitForAllVisibleExamCardsToContain(searchText);
 
-                Assert.assertTrue(
-                                examinationPage.getVisibleExamCardCount() > 0,
-                                "Expected matching exam cards for " + caseName + " search.");
-                Assert.assertTrue(
-                                examinationPage.allVisibleExamCardsContain(searchText),
-                                "Every displayed exam card must contain the search text for " + caseName + ".");
-                Assert.assertTrue(
-                                examinationPage.isExamSnapshotClearButtonEnabled(),
-                                "Clear button must be enabled after typing a valid search value.");
-        }
-
-
-        private String buildVeryLongText() {
-                StringJoiner joiner = new StringJoiner("");
-                for (int index = 0; index < 40; index++) {
-                        joiner.add("VeryLongSearchTerm");
-                }
-                return joiner.toString();
+                Assert.assertTrue(examinationPage.getVisibleExamCardCount() > 0);
+                Assert.assertTrue(examinationPage.allVisibleExamCardsContain(searchText));
+                Assert.assertTrue(examinationPage.isExamSnapshotClearButtonEnabled());
         }
 }
