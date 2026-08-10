@@ -14,16 +14,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Centralised WebDriver lifecycle manager.
- *
- * <p>All browser configuration (browser name, headless mode, arguments,
- * and preferences) is read from {@code config.properties} via
- * {@link ConfigReader}.  System properties ({@code -Dbrowser},
- * {@code -Dheadless}) take priority when supplied on the command line.
- *
- * <p>Supported browsers: <b>Chrome</b>, <b>Firefox</b>, <b>Edge</b>.
- */
 public final class DriverManager {
 
     private static final ThreadLocal<WebDriver> DRIVER = new ThreadLocal<>();
@@ -31,33 +21,21 @@ public final class DriverManager {
     private DriverManager() {
     }
 
-    // =========================================================================
-    // Public API
-    // =========================================================================
-
-    /**
-     * Creates a new {@link WebDriver} for the configured browser, stores it in
-     * a {@link ThreadLocal}, and – when not running headless – maximises the
-     * window.
-     *
-     * <p>Configuration is read from {@code config.properties}:
-     * <ul>
-     *   <li>{@code browser} – chrome | firefox | edge</li>
-     *   <li>{@code headless} – true | false</li>
-     *   <li>{@code <browser>.arguments} – comma-separated CLI arguments</li>
-     *   <li>{@code <browser>.headless.arguments} – extra args when headless</li>
-     *   <li>{@code <browser>.prefs} – comma-separated key=value preferences</li>
-     * </ul>
-     */
     public static void openBrowser() {
         String browserName = resolveProperty("browser", "chrome").toLowerCase().trim();
         boolean headless   = Boolean.parseBoolean(resolveProperty("headless", "false"));
+
+        quitDriver();
 
         WebDriver driver = createDriver(browserName, headless);
         setDriver(driver);
 
         if (!headless) {
-            driver.manage().window().maximize();
+            try {
+                driver.manage().window().maximize();
+            } catch (Exception e) {
+                System.err.println("Warning: Unable to maximize browser window: " + e.getMessage());
+            }
         }
     }
 
@@ -70,8 +48,8 @@ public final class DriverManager {
 
     public static WebDriver getDriver() {
         WebDriver driver = DRIVER.get();
-        if (driver == null) {
-            throw new IllegalStateException("WebDriver is not initialized for the current thread");
+        if (driver == null || isSessionClosed(driver)) {
+            return null;
         }
         return driver;
     }
@@ -82,14 +60,21 @@ public final class DriverManager {
             if (driver != null) {
                 driver.quit();
             }
+        } catch (Exception e) {
+            System.err.println("Warning: Error quitting driver: " + e.getMessage());
         } finally {
             DRIVER.remove();
         }
     }
 
-    // =========================================================================
-    // Private – driver factory
-    // =========================================================================
+    private static boolean isSessionClosed(WebDriver driver) {
+        try {
+            driver.getTitle();
+            return false;
+        } catch (Exception e) {
+            return true;
+        }
+    }
 
     private static WebDriver createDriver(String browserName, boolean headless) {
         return switch (browserName) {
@@ -102,12 +87,13 @@ public final class DriverManager {
         };
     }
 
-    // =========================================================================
-    // Private – browser-specific driver creation
-    // =========================================================================
-
     private static WebDriver createChromeDriver(boolean headless) {
         ChromeOptions options = new ChromeOptions();
+
+        options.addArguments("--remote-allow-origins=*");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+        options.addArguments("--disable-gpu");
 
         Map<String, Object> prefs = parsePrefsAsObjects("chrome.prefs");
         if (!prefs.isEmpty()) {
@@ -116,6 +102,7 @@ public final class DriverManager {
 
         addArguments(options, "chrome.arguments");
         if (headless) {
+            options.addArguments("--headless=new");
             addArguments(options, "chrome.headless.arguments");
         }
 
@@ -136,6 +123,7 @@ public final class DriverManager {
 
         addArguments(options, "firefox.arguments");
         if (headless) {
+            options.addArguments("-headless");
             addArguments(options, "firefox.headless.arguments");
         }
 
@@ -145,6 +133,10 @@ public final class DriverManager {
     private static WebDriver createEdgeDriver(boolean headless) {
         EdgeOptions options = new EdgeOptions();
 
+        options.addArguments("--remote-allow-origins=*");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+
         Map<String, Object> prefs = parsePrefsAsObjects("edge.prefs");
         if (!prefs.isEmpty()) {
             options.setExperimentalOption("prefs", prefs);
@@ -152,30 +144,19 @@ public final class DriverManager {
 
         addArguments(options, "edge.arguments");
         if (headless) {
+            options.addArguments("--headless=new");
             addArguments(options, "edge.headless.arguments");
         }
 
         return new EdgeDriver(options);
     }
 
-    // =========================================================================
-    // Private – config helpers
-    // =========================================================================
-
-    /**
-     * Returns the system property if set, otherwise falls back to
-     * {@link ConfigReader}.
-     */
     private static String resolveProperty(String key, String defaultValue) {
         String systemValue = System.getProperty(key);
         return (systemValue != null) ? systemValue
-                                     : ConfigReader.getProperty(key, defaultValue);
+                : ConfigReader.getProperty(key, defaultValue);
     }
 
-    /**
-     * Reads a comma-separated list of arguments from config and adds them
-     * to the given browser options.
-     */
     private static void addArguments(ChromeOptions options, String configKey) {
         for (String arg : splitCsv(configKey)) {
             options.addArguments(arg);
@@ -194,10 +175,6 @@ public final class DriverManager {
         }
     }
 
-    /**
-     * Parses a comma-separated list of {@code key=value} pairs from the given
-     * config key.  Boolean-looking values are stored as {@link Boolean}.
-     */
     private static Map<String, Object> parsePrefsAsObjects(String configKey) {
         Map<String, Object> result = new HashMap<>();
 
@@ -213,9 +190,6 @@ public final class DriverManager {
         return result;
     }
 
-    /**
-     * Parses a comma-separated list of {@code key=value} pairs into a map.
-     */
     private static Map<String, String> parsePrefs(String configKey) {
         Map<String, String> prefs = new HashMap<>();
 
@@ -229,10 +203,6 @@ public final class DriverManager {
         return prefs;
     }
 
-    /**
-     * Splits a comma-separated config value into a trimmed list,
-     * filtering out blanks.
-     */
     private static List<String> splitCsv(String configKey) {
         String raw = ConfigReader.getProperty(configKey, "");
         if (raw.isBlank()) {
@@ -244,4 +214,3 @@ public final class DriverManager {
                 .toList();
     }
 }
-

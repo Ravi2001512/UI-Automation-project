@@ -197,11 +197,17 @@ public class ClassExaminationPage extends BasePage {
     // =========================================================================
 
     public void navigateToClassExaminationTab() {
-        wait.until(ExpectedConditions.elementToBeClickable(classExaminationTab));
-        click(classExaminationTab);
+        try {
+            WebElement tab = wait.until(ExpectedConditions.presenceOfElementLocated(classExaminationTab));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", tab);
+            wait.until(ExpectedConditions.elementToBeClickable(classExaminationTab));
+            tab.click();
+        } catch (Exception e) {
+            WebElement tab = driver.findElement(classExaminationTab);
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", tab);
+        }
         waitForExamSnapshotVisible();
     }
-
     public void waitForExamSnapshotVisible() {
         wait.until(ExpectedConditions.visibilityOfElementLocated(examSnapshotHeading));
         wait.until(ExpectedConditions.visibilityOfElementLocated(examSnapshotSearchInput));

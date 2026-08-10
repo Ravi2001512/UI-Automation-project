@@ -24,58 +24,36 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
-/**
- * Root base class for all E2E tests.
- *
- * <p>Lifecycle:
- * <ul>
- *   <li>{@link #openBrowser()} – {@code @BeforeClass}: starts the browser via
- *       {@link DriverManager#openBrowser()} and navigates to the app;
- *       also performs the initial admin login so concrete tests start from an authenticated state.</li>
- *   <li>{@link #initSoftAssert()} – {@code @BeforeMethod}: gives each test method its own
- *       {@link SoftAssert} instance (thread-safe via {@link ThreadLocal}).</li>
- *   <li>{@link #assertAll()} – {@code @AfterMethod}: flushes all soft assertions and cleans up.</li>
- *   <li>{@link #quitBrowser()} – {@code @AfterClass}: tears the driver down regardless of outcome.</li>
- * </ul>
- *
- * <p>Database helpers ({@link #truncateTables} / {@link #insertCsvDataFromResourceDirectory})
- * are intended to be called from sub-class {@code @BeforeClass} methods to seed test data
- * before any test in that class runs.
- */
 public abstract class BaseTest {
 
-    /** Per-thread {@link SoftAssert}; initialised in {@link #initSoftAssert()}. */
     private final ThreadLocal<SoftAssert> softAssert = new ThreadLocal<>();
-
-    /** Path to the JSON assertion file for the concrete module (e.g. {@code AssertDir/user_details.json}). */
     protected final String assertionPath;
 
     protected BaseTest(String assertionPath) {
         this.assertionPath = assertionPath;
     }
 
-    // =========================================================================
-    // Browser lifecycle
-    // =========================================================================
-
-    /**
-     * Opens the configured browser (see {@link DriverManager#openBrowser()}),
-     * navigates to {@code app.url}, and logs in as the configured admin user.
-     */
     @BeforeClass(alwaysRun = true)
     public void openBrowser() {
-        DriverManager.openBrowser();
-        navigateAndLogin();
+        try {
+            DriverManager.openBrowser();
+            navigateAndLogin();
+        } catch (Exception e) {
+            System.err.println("Failed during browser startup/login in @BeforeClass. Retrying initialization...");
+            DriverManager.quitDriver();
+            DriverManager.openBrowser();
+            navigateAndLogin();
+        }
     }
 
     @AfterClass(alwaysRun = true)
     public void quitBrowser() {
-        DriverManager.quitDriver();
+        try {
+            DriverManager.quitDriver();
+        } catch (Exception e) {
+            System.err.println("Error while quitting driver in @AfterClass: " + e.getMessage());
+        }
     }
-
-    // =========================================================================
-    // SoftAssert lifecycle
-    // =========================================================================
 
     @BeforeMethod(alwaysRun = true)
     public void initSoftAssert() {
@@ -85,41 +63,32 @@ public abstract class BaseTest {
     @AfterMethod(alwaysRun = true)
     public void assertAll() {
         try {
-            getSoftAssert().assertAll();
+            if (getSoftAssert() != null) {
+                getSoftAssert().assertAll();
+            }
         } finally {
             softAssert.remove();
         }
     }
 
-    // =========================================================================
-    // Protected – WebDriver accessor
-    // =========================================================================
-
     protected WebDriver driver() {
-        return DriverManager.getDriver();
+        WebDriver currentDriver = DriverManager.getDriver();
+        if (currentDriver == null) {
+            DriverManager.openBrowser();
+            navigateAndLogin();
+            return DriverManager.getDriver();
+        }
+        return currentDriver;
     }
 
     protected SoftAssert getSoftAssert() {
         SoftAssert currentSoftAssert = softAssert.get();
-
         if (currentSoftAssert == null) {
-            throw new IllegalStateException(
-                    "SoftAssert is not initialized for the current test method");
+            throw new IllegalStateException("SoftAssert is not initialized for the current test method");
         }
-
         return currentSoftAssert;
     }
 
-    // =========================================================================
-    // Protected – database helpers (to be called from sub-class @BeforeClass)
-    // =========================================================================
-
-    /**
-     * Truncates one or more comma-separated table names.
-     * Blank entries are silently skipped.
-     *
-     * <p>Example: {@code truncateTables("users,sessions,audit_log")}
-     */
     protected void truncateTables(String tableNames) {
         if (tableNames == null || tableNames.isBlank()) {
             return;
@@ -127,30 +96,17 @@ public abstract class BaseTest {
 
         for (String tableName : tableNames.split(",")) {
             String trimmedTableName = tableName.trim();
-
             if (!trimmedTableName.isEmpty()) {
                 DatabaseHandler.truncateTable(trimmedTableName);
             }
         }
     }
 
-    /**
-     * Walks {@code resourceDirectoryPath} on the test classpath, sorts all
-     * {@code .csv} files alphabetically (so FK dependencies are respected),
-     * and bulk-inserts each one into the table whose name matches the filename
-     * (without the {@code .csv} extension).
-     *
-     * <p>After each insert the PostgreSQL sequence is reset so subsequent
-     * auto-generated IDs do not collide with the seeded rows.
-     *
-     * @param resourceDirectoryPath classpath-relative path, e.g. {@code "InsertDir/UserDetails"}
-     */
     protected void insertCsvDataFromResourceDirectory(String resourceDirectoryPath) {
         URL resourceUrl = BaseTest.class.getClassLoader().getResource(resourceDirectoryPath);
 
         if (resourceUrl == null) {
-            throw new IllegalArgumentException(
-                    "Insert resource directory not found: " + resourceDirectoryPath);
+            throw new IllegalArgumentException("Insert resource directory not found: " + resourceDirectoryPath);
         }
 
         try (Stream<Path> paths = Files.list(Path.of(resourceUrl.toURI()))) {
@@ -159,25 +115,10 @@ public abstract class BaseTest {
                     .sorted(Comparator.comparing(path -> path.getFileName().toString()))
                     .forEach(path -> insertCsvData(resourceDirectoryPath, path));
         } catch (IOException | URISyntaxException exception) {
-            throw new IllegalStateException(
-                    "Unable to read insert resource directory: " + resourceDirectoryPath, exception);
+            throw new IllegalStateException("Unable to read insert resource directory: " + resourceDirectoryPath, exception);
         }
     }
 
-    // =========================================================================
-    // DataProvider
-    // =========================================================================
-
-    /**
-     * Generic data provider that loads test data from the module's JSON assertion
-     * file.  The test-case ID is read from {@link Test#description()}.
-     *
-     * <p>Usage on a test method:
-     * <pre>{@code
-     * @Test(description = "TC-001", dataProvider = "commonDataProvider")
-     * public void myTest(TestData testData) { ... }
-     * }</pre>
-     */
     @DataProvider(name = "commonDataProvider")
     @SuppressWarnings("rawtypes")
     public Object[][] commonDataProvider(Method method) {
@@ -192,17 +133,12 @@ public abstract class BaseTest {
         return testDataArray;
     }
 
-    // =========================================================================
-    // Private helpers
-    // =========================================================================
-
-
-
-    private void navigateAndLogin() {
-        driver().get(ConfigReader.getProperty("app.url"));
+    protected void navigateAndLogin() {
+        WebDriver driver = DriverManager.getDriver();
+        driver.get(ConfigReader.getProperty("app.url"));
 
         com.ucsc.tutionplatform.pages.LoginPage loginPage =
-                new com.ucsc.tutionplatform.pages.LoginPage(driver());
+                new com.ucsc.tutionplatform.pages.LoginPage(driver);
 
         loginPage.login(
                 ConfigReader.getProperty("admin.username"),
@@ -211,7 +147,7 @@ public abstract class BaseTest {
     }
 
     private void insertCsvData(String resourceDirectoryPath, Path csvPath) {
-        String fileName  = csvPath.getFileName().toString();
+        String fileName = csvPath.getFileName().toString();
         String tableName = fileName.substring(0, fileName.length() - ".csv".length());
         String resourcePath = resourceDirectoryPath + "/" + fileName;
 

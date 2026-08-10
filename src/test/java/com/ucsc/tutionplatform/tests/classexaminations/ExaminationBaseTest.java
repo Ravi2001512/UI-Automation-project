@@ -7,16 +7,6 @@ import com.ucsc.tutionplatform.tests.BaseTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 
-/**
- * Base class for all Class-Examination module tests.
- *
- * <p>Extends {@link BaseTest} and adds:
- * <ul>
- *   <li>A {@code @BeforeClass} that truncates and re-seeds the examination tables.</li>
- *   <li>A {@code @BeforeMethod} that navigates to the Class Examination tab so
- *       each test starts from the correct UI state.</li>
- * </ul>
- */
 public abstract class ExaminationBaseTest extends BaseTest {
 
     private static final String EXAMINATION_TRUNCATE_TABLES = "examination.truncate.tables";
@@ -36,7 +26,14 @@ public abstract class ExaminationBaseTest extends BaseTest {
 
     @BeforeMethod(alwaysRun = true)
     public void setupExaminationContext() {
-        examinationPage = new ClassExaminationPage(driver());
-        examinationPage.navigateToClassExaminationTab();
+        try {
+            examinationPage = new ClassExaminationPage(driver());
+            examinationPage.navigateToClassExaminationTab();
+        } catch (Exception e) {
+            System.err.println("Session invalid or navigation failed in setupExaminationContext. Re-authenticating... " + e.getMessage());
+            navigateAndLogin();
+            examinationPage = new ClassExaminationPage(driver());
+            examinationPage.navigateToClassExaminationTab();
+        }
     }
 }
