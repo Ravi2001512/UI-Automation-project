@@ -1,6 +1,6 @@
 package com.ucsc.tutionplatform.database;
 
-import com.ucsc.tutionplatform.utils.ConfigReader;
+import com.ucsc.tutionplatform.config.ConfigReader;
 
 import java.io.BufferedReader;
 import java.io.IOException;
