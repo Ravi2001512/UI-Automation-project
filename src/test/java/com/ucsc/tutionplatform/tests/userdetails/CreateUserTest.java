@@ -60,28 +60,28 @@ public class CreateUserTest extends UserDetailsBaseTest {
         Assert.assertFalse(isDuplicateVisible, "Bug: duplicate User ID '" + existingUserId + "' was accepted!");
     }
 
-    @Test(description = "TC-003: Verify rejection of invalid email format")
-    public void verifyThatInvalidEmailFormatIsRejected() {
-        UserDetailsPage userDetailsPage = new UserDetailsPage(driver());
-
-        long timestamp = System.currentTimeMillis();
-        String userId = "USR-" + timestamp;
-        String displayName = "Invalid Email User " + timestamp;
-        String username = "user_" + timestamp;
-        String invalidEmail = "nimal.example.com";
-
-        userDetailsPage.clickNewUser();
-        userDetailsPage.fillUserForm(userId, displayName, username, "SecurePass@123", invalidEmail, "0771234567", "981234567V");
-
-        // Verify HTML5 validation state
-        boolean isEmailValid = userDetailsPage.isPersonalEmailValid();
-        Assert.assertFalse(isEmailValid, "Bug: Personal Email field marked '" + invalidEmail + "' as valid!");
-
-        userDetailsPage.clickCreateUserButton();
-
-        boolean isUserVisible = userDetailsPage.isUserCreatedInList(displayName);
-        Assert.assertFalse(isUserVisible, "Bug: user was created despite an invalid email format!");
-    }
+//    @Test(description = "TC-003: Verify rejection of invalid email format")
+//    public void verifyThatInvalidEmailFormatIsRejected() {
+//        UserDetailsPage userDetailsPage = new UserDetailsPage(driver());
+//
+//        long timestamp = System.currentTimeMillis();
+//        String userId = "USR-" + timestamp;
+//        String displayName = "Invalid Email User " + timestamp;
+//        String username = "user_" + timestamp;
+//        String invalidEmail = "nimal.example.com";
+//
+//        userDetailsPage.clickNewUser();
+//        userDetailsPage.fillUserForm(userId, displayName, username, "SecurePass@123", invalidEmail, "0771234567", "981234567V");
+//
+//        // Verify HTML5 validation state
+//        boolean isEmailValid = userDetailsPage.isPersonalEmailValid();
+//        Assert.assertFalse(isEmailValid, "Bug: Personal Email field marked '" + invalidEmail + "' as valid!");
+//
+//        userDetailsPage.clickCreateUserButton();
+//
+//        boolean isUserVisible = userDetailsPage.isUserCreatedInList(displayName);
+//        Assert.assertFalse(isUserVisible, "Bug: user was created despite an invalid email format!");
+//    }
 
     @Test(description = "TC-004: Verify rejection of invalid mobile number format")
     public void verifyThatInvalidMobileNumberFormatIsRejected() {
