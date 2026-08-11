@@ -3,7 +3,7 @@ package com.ucsc.tutionplatform.database;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
-import com.ucsc.tutionplatform.utils.ConfigReader;
+import com.ucsc.tutionplatform.config.ConfigReader;
 
 import java.util.Properties;
 
